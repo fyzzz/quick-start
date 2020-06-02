@@ -1,10 +1,17 @@
 package cn.fyzzz.quickstart.service;
 
+import cn.fyzzz.quickstart.model.pojo.UserInfo;
+import com.baomidou.mybatisplus.extension.service.IService;
 import org.springframework.security.core.userdetails.UserDetailsService;
 
 /**
+ * <p>
+ * 用户信息表 服务类
+ * </p>
+ *
  * @author fyzzz
- * 2020/6/1 10:49
+ * @since 2020-06-02
  */
-public interface UserInfoService extends UserDetailsService {
+public interface UserInfoService extends IService<UserInfo>, UserDetailsService {
+
 }
