@@ -1,5 +1,6 @@
-package cn.fyzzz.quickstart.config;
+package cn.fyzzz.quickstart.config.security;
 
+import cn.fyzzz.quickstart.common.enumeration.ResultEnum;
 import cn.fyzzz.quickstart.model.pojo.SysResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -9,13 +10,19 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDecisionManager;
+import org.springframework.security.config.annotation.ObjectPostProcessor;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.FilterInvocationSecurityMetadataSourceParser;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.access.intercept.FilterInvocationSecurityMetadataSource;
+import org.springframework.security.web.access.intercept.FilterSecurityInterceptor;
 
 import java.io.PrintWriter;
 
@@ -30,6 +37,13 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     @Qualifier(value = "userInfoService")
     private UserDetailsService userInfoService;
+
+    @Autowired
+    private AccessDecisionManager accessDecisionManager;
+    @Autowired
+    private AccessDeniedHandler accessDeniedHandler;
+    @Autowired
+    private FilterInvocationSecurityMetadataSource filterInvocationSecurityMetadataSource;
 
     @Bean
     PasswordEncoder passwordEncoder(){
@@ -50,7 +64,15 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.authorizeRequests()
-                .anyRequest().authenticated()
+                .withObjectPostProcessor(new ObjectPostProcessor<FilterSecurityInterceptor>() {
+                    @Override
+                    public <O extends FilterSecurityInterceptor> O postProcess(O object) {
+                        object.setSecurityMetadataSource(filterInvocationSecurityMetadataSource);
+                        object.setAccessDecisionManager(accessDecisionManager);
+                        return object;
+                    }
+                }).and()
+                .exceptionHandling().accessDeniedHandler(accessDeniedHandler)
                 .and()
                 .formLogin()
                 //自定义登录的url method=post
@@ -64,7 +86,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                     //先设置编码，再获取输出流
                     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                     PrintWriter out = response.getWriter();
-                    out.write(mapper.writeValueAsString(SysResult.error(e.getMessage())));
+                    out.write(mapper.writeValueAsString(SysResult.getInstance(ResultEnum.LOGIN_FAILURE)));
                     out.flush();
                     out.close();
                 })
@@ -105,7 +127,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                     response.setStatus(HttpStatus.UNAUTHORIZED.value());
                     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                     PrintWriter out = response.getWriter();
-                    out.write(mapper.writeValueAsString(SysResult.error("登录信息过期，请重新登录。")));
+                    out.write(mapper.writeValueAsString(SysResult.getInstance(ResultEnum.PERMISSION_DENIED)));
                     out.flush();
                     out.close();
                 })
@@ -117,7 +139,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                     response.setStatus(HttpStatus.UNAUTHORIZED.value());
                     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                     PrintWriter out = response.getWriter();
-                    out.write(mapper.writeValueAsString(SysResult.error("您未登录，请重新登录。")));
+                    out.write(mapper.writeValueAsString(SysResult.getInstance(ResultEnum.NOT_LOGIN)));
                     out.flush();
                     out.close();
                 })

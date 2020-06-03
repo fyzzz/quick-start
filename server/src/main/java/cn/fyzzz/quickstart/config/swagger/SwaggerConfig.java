@@ -1,4 +1,4 @@
-package cn.fyzzz.quickstart.config;
+package cn.fyzzz.quickstart.config.swagger;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
